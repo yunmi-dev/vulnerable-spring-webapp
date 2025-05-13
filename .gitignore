@@ -58,6 +58,3 @@ build/
 # virtual machine crash logs
 hs_err_pid*
 replay_pid*
-
-# 예외 처리: Maven Wrapper JAR 파일은 포함
-!.mvn/wrapper/maven-wrapper.jar
