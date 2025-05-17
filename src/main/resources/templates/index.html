@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ko">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <title>Security Demo - 게시판</title>
+</head>
+<body class="bg-gray-50 text-gray-800">
+<nav class="bg-white shadow p-4 mb-6">
+    <div class="max-w-4xl mx-auto flex justify-between">
+        <a href="/" class="font-bold text-lg">🏠 게시판</a>
+        <div class="space-x-4">
+            <a href="/login" class="text-blue-600 hover:underline">로그인</a>
+            <a href="/signup" class="text-blue-600 hover:underline">회원가입</a>
+            <a href="/profile" class="text-blue-600 hover:underline">프로필 설정</a>
+        </div>
+    </div>
+</nav>
+<main class="max-w-4xl mx-auto space-y-8">
+    <!-- 검색 기능 (SQL Injection) -->
+    <section class="bg-white p-6 rounded-xl shadow">
+        <h1 class="text-2xl font-semibold mb-4">게시글 검색</h1>
+        <form action="/search" method="GET" class="flex items-center space-x-2">
+            <input type="text" name="keyword" placeholder="검색어 입력" class="flex-1 p-2 border rounded" />
+            <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded">검색</button>
+        </form>
+    </section>
+    <!-- 게시글 목록 -->
+    <section class="bg-white p-6 rounded-xl shadow">
+        <h2 class="text-xl font-semibold mb-4">게시글 목록</h2>
+        <ul class="divide-y">
+            <li th:each="article : ${articles}" class="py-2">
+                <a th:href="@{/posts/{id}(id=${article.id})}" class="text-blue-600 hover:underline"
+                   th:text="'[' + ${article.id} + '] ' + ${article.title}"></a> -
+                <span th:text="${article.authorUsername}"></span>
+            </li>
+            <li th:if="${#lists.isEmpty(articles)}" class="py-2 text-gray-500">
+                게시글이 없습니다.
+            </li>
+        </ul>
+    </section>
+    <!-- 게시글 작성 버튼 -->
+    <section class="bg-white p-6 rounded-xl shadow">
+        <h2 class="text-xl font-semibold mb-4">게시글 작성</h2>
+        <a href="/posts/new" class="bg-green-600 text-white px-4 py-2 rounded">새 게시글 작성</a>
+    </section>
+</main>
+</body>
+</html>
