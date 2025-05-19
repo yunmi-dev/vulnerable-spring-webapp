@@ -12,6 +12,7 @@ import java.sql.PreparedStatement;
 import java.sql.Statement;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -62,17 +63,29 @@ public class ArticleRepository {
 
     // SQL Injection 취약점: 안전하지 않은 검색 쿼리
     public List<Article> searchByTitleUnsafe(String keyword) {
-        // 취약점: 파라미터화된 쿼리 대신 문자열 연결 사용
-        String sql = "SELECT a.*, u.username as author_username FROM articles a " +
-                "JOIN users u ON a.user_id = u.id " +
-                "WHERE a.title LIKE '%" + keyword + "%' " +
-                "ORDER BY a.created_at DESC";
+        try {
+            // 시간 지연 인젝션 감지
+            if (keyword.toLowerCase().contains("sleep")) {
+                // 시간 지연 시뮬레이션
+                Thread.sleep(3000);
+            }
 
-        return jdbcTemplate.query(sql, (rs, rowNum) -> {
-            Article article = articleRowMapper.mapRow(rs, rowNum);
-            article.setAuthorUsername(rs.getString("author_username"));
-            return article;
-        });
+            // 취약점: 파라미터화된 쿼리 대신 문자열 연결 사용
+            String sql = "SELECT a.*, u.username as author_username FROM articles a " +
+                    "JOIN users u ON a.user_id = u.id " +
+                    "WHERE a.title LIKE '%" + keyword + "%' " +
+                    "ORDER BY a.created_at DESC";
+
+            return jdbcTemplate.query(sql, (rs, rowNum) -> {
+                Article article = articleRowMapper.mapRow(rs, rowNum);
+                article.setAuthorUsername(rs.getString("author_username"));
+                return article;
+            });
+        } catch (Exception e) {
+            // 오류 발생 시 빈 목록 반환
+            System.err.println("Search error: " + e.getMessage());
+            return new ArrayList<>();
+        }
     }
 
     public Article save(Article article) {
