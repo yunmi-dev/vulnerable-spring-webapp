@@ -1,9 +1,13 @@
 package com.securitydemo.controller;
 
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseBody;
+
+import java.util.HashMap;
+import java.util.Map;
 
 @Controller
 @RequestMapping("/debug")
@@ -28,5 +32,19 @@ public class SecurityMisconfigurationController {
     public String triggerError() {
         // 취약점: 의도적으로 예외를 발생시켜 스택 트레이스를 노출
         throw new RuntimeException("This is a test exception to demonstrate stack trace exposure");
+    }
+
+    // 관리자 페이지 (접근 제어 취약점)
+    @GetMapping("/admin")
+    @ResponseBody
+    public Map<String, Object> adminPage(HttpServletRequest request) {
+        // 취약점: 관리자 권한 검즞ㅇ 없음
+        Map<String, Object> response = new HashMap<>();
+        response.put("message", "Welcome to Admin Page!");
+        response.put("user_count", 10); // 사용자 수 가정
+        response.put("server_status", "Running");
+        response.put("sensitive_info", "DATABASE_URL=jdbc:h2:mem:testdb;USER=sa;PASSWORD=''");
+
+        return response;
     }
 }
