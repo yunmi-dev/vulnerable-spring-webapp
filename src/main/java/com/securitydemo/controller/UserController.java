@@ -43,12 +43,32 @@ public class UserController {
                          @RequestParam String password,
                          @RequestParam(required = false) String email,
                          @RequestParam(required = false) Integer birthYear,
+                         HttpServletResponse response,  // 이 매개변수 추가
                          Model model) {
         try {
+            System.out.println("Signup request received: " + username);
             User user = userService.signUp(username, password, email, birthYear);
-            model.addAttribute("message", "회원가입이 완료되었습니다. 로그인해주세요.");
-            return "redirect:/login";
+
+            if (user != null && user.getId() != null) {
+                // 회원가입 성공 시 바로 로그인 처리
+                User loggedInUser = userService.login(username, password);
+
+                if (loggedInUser != null) {
+                    String token = userService.createSession(loggedInUser);
+                    Cookie cookie = new Cookie("session_token", token);
+                    cookie.setPath("/");
+                    response.addCookie(cookie);
+                    return "redirect:/";
+                }
+
+                return "redirect:/login?success=true";
+            } else {
+                model.addAttribute("error", "회원가입 처리 중 오류가 발생했습니다.");
+                return "signup";
+            }
         } catch (Exception e) {
+            System.out.println("Signup error: " + e.getMessage());
+            e.printStackTrace();
             model.addAttribute("error", "회원가입 중 오류 발생: " + e.getMessage());
             return "signup";
         }
@@ -66,21 +86,29 @@ public class UserController {
                         @RequestParam String password,
                         HttpServletResponse response,
                         Model model) {
-        Optional<User> optionalUser = userService.login(username, password);
+        try {
+            System.out.println("Login request received: " + username);
+            User user = userService.login(username, password);
 
-        if (optionalUser.isPresent()) {
-            User user = optionalUser.get();
+            if (user != null) {
+                // 세션 토큰 생성 및 쿠키에 저장
+                String token = userService.createSession(user);
+                Cookie cookie = new Cookie("session_token", token);
+                cookie.setPath("/");
+                cookie.setHttpOnly(false); // 취약점: JavaScript에서 쿠키 접근 가능
+                response.addCookie(cookie);
 
-            // 세션 토큰 생성 및 쿠키에 저장
-            String sessionToken = username + "-" + System.currentTimeMillis();
-            Cookie cookie = new Cookie("sesson_token", sessionToken);
-            cookie.setPath("/");
-            cookie.setHttpOnly(false);  // 취약점: JavaScript에서 쿠키 접근 가능
-            response.addCookie(cookie);
-
-            return "redirect:/";
-        } else {
-            model.addAttribute("error", "아이디 또는 비밀번호가 일치하지 않습니다.");
+                System.out.println("Login successful, redirecting to home page");
+                return "redirect:/";
+            } else {
+                System.out.println("Login failed: invalid credentials");
+                model.addAttribute("error", "아이디 또는 비밀번호가 일치하지 않습니다.");
+                return "login";
+            }
+        } catch (Exception e) {
+            System.out.println("Login error: " + e.getMessage());
+            e.printStackTrace();
+            model.addAttribute("error", "로그인 중 오류 발생: " + e.getMessage());
             return "login";
         }
     }

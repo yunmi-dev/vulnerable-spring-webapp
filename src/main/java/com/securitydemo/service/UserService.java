@@ -20,46 +20,91 @@ public class UserService {
     @Autowired
     public UserService(UserRepository userRepository) {
         this.userRepository = userRepository;
+
+        // 테스트용 사용자 추가
+        try {
+            User testUser = new User();
+            testUser.setUsername("test");
+            testUser.setPassword(hashMD5("test"));
+            testUser.setEmail("test@example.com");
+            testUser.setAdmin(false);
+            userRepository.save(testUser);
+            System.out.println("Test user added successfully");
+        } catch (Exception e) {
+            System.out.println("Error adding test user: " + e.getMessage());
+        }
     }
 
     public User signUp(String username, String password, String email, Integer birthYear) {
-        // 취약점: 평문 비밀번호를 MD5로 해싱함 (안전하지 않은 방식)
-        String hashedPassword = hashMD5(password);
+        System.out.println("SignUp attempt - Username: " + username);
 
-        User user = new User();
-        user.setUsername(username);
-        user.setPassword(hashedPassword);
-        user.setEmail(email);
-        user.setBirthYear(birthYear);
-        user.setAdmin(false);
+        try {
+            // 취약점: 평문 비밀번호를 MD5로 해싱 (안전하지 않은 방식)
+            String hashedPassword = hashMD5(password);
 
-        return userRepository.save(user);
-    }
+            User user = new User();
+            user.setUsername(username);
+            user.setPassword(hashedPassword); // 취약점: 솔트 없이 MD5로만 해싱
+            user.setEmail(email);
+            user.setBirthYear(birthYear);
+            user.setAdmin(false);
 
-    public Optional<User> login(String username, String password) {
-        // 취약점: 안전하지 않은 비밀번호 비교
-        String hashedPassword = hashMD5(password);
-
-        Optional<User> optionalUser = userRepository.findByUsername(username);
-        if (optionalUser.isPresent() && optionalUser.get().getPassword().equals(hashedPassword)) {
-            User user = optionalUser.get();
-            sessionStore.put(generateSessionToken(username), user);
-            return Optional.of(user);
+            User savedUser = userRepository.save(user);
+            System.out.println("User registered successfully: " + savedUser.getId());
+            return savedUser;
+        } catch (Exception e) {
+            System.out.println("SignUp error: " + e.getMessage());
+            e.printStackTrace();
+            throw e;
         }
-        return Optional.empty();
     }
 
-    // 세션 토큰 생성 (간단한 문자열 조합)
-    private String generateSessionToken(String username) {
-        return username + "-" + System.currentTimeMillis();
+    public User login(String username, String password) {
+        System.out.println("Login attempt - Username: " + username);
+
+        try {
+            // 취약점: 안전하지 않은 비밀번호 비교
+            String hashedPassword = hashMD5(password);
+
+            User user = userRepository.findByUsername(username).orElse(null);
+
+            if (user != null) {
+                System.out.println("User found: " + user.getUsername() + ", Hash: " + user.getPassword());
+
+                if (hashedPassword.equals(user.getPassword())) {
+                    System.out.println("Password match - login successful");
+                    String token = username + "-" + System.currentTimeMillis();
+                    sessionStore.put(token, user);
+                    System.out.println("Session token created: " + token);
+                    return user;
+                } else {
+                    System.out.println("Password mismatch: Expected " + user.getPassword() + ", Got " + hashedPassword);
+                }
+            } else {
+                System.out.println("User not found: " + username);
+            }
+
+            return null;
+        } catch (Exception e) {
+            System.out.println("Login error: " + e.getMessage());
+            e.printStackTrace();
+            return null;
+        }
     }
 
-    // 세션에서 사용자 가져오기
+    public String createSession(User user) {
+        String token = user.getUsername() + "-" + System.currentTimeMillis();
+        sessionStore.put(token, user);
+        System.out.println("New session created: " + token + " for user: " + user.getUsername());
+        return token;
+    }
+
     public User getUserBySessionToken(String token) {
-        return sessionStore.get(token);
+        User user = sessionStore.get(token);
+        System.out.println("Session lookup - Token: " + token + ", User: " + (user != null ? user.getUsername() : "null"));
+        return user;
     }
 
-    // 다양한 서비스 메서드
     public Optional<User> findById(Integer id) {
         return userRepository.findById(id);
     }
@@ -73,40 +118,29 @@ public class UserService {
         Map<String, Object> result = new HashMap<>();
 
         try {
-            // 위험한 방식 - 사용자 입력으로부터 문자열 생성 후 계산
-            String expression = "2025 - " + birthYearInput;
-
-            // 명령어 실행 시뮬레이션 (위험)
+            // 명령어 실행 시뮬레이션 (위험한 코드)
             if (birthYearInput.contains(";") || birthYearInput.contains("|") ||
                     birthYearInput.contains("$(") || birthYearInput.contains("`")) {
 
-                // 명령어 추출 (보안을 위해 실제 실행은 안함)
+                // 명령어 추출 (보안을 위해 실제 실행은 하지 않음)
                 String command = birthYearInput.replaceAll("^\\d+\\)\\s*;\\s*", "");
 
                 // 명령어 실행 시뮬레이션
                 result.put("age", -1);
                 result.put("command_detected", command);
-
-                // 위험: 실제로는 아래와 같은 코드가 실행될 수 있음 (시연 목적으로 주석 처리)
-                // Process process = Runtime.getRuntime().exec(command);
-                // BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
-                // String commandOutput = reader.lines().collect(Collectors.joining("\n"));
-                // result.put("command_output", commandOutput);
-
                 return result;
             }
 
-            // 일반적인 계싼 수행
-            if (expression.contains("-")) {
-                String[] parts = expression.split(" - ");
-                int currentYear = Integer.parseInt(parts[0]);
-                int birthYear = Integer.parseInt(parts[1]);
-                int age = currentYear - birthYear;
+            // 일반적인 계산 수행
+            try {
+                int birthYear = Integer.parseInt(birthYearInput);
+                int age = 2025 - birthYear;
                 result.put("age", age);
-                return result;
+            } catch (NumberFormatException e) {
+                result.put("age", -1);
+                result.put("error", "Invalid birth year");
             }
 
-            result.put("age", -1);
             return result;
         } catch (Exception e) {
             result.put("age", -1);
@@ -120,27 +154,23 @@ public class UserService {
         Optional<User> optionalUser = userRepository.findById(userId);
         if (optionalUser.isPresent()) {
             User user = optionalUser.get();
-            // 취약점: URL 검증 없이 저장함
+            // 취약점: URL 검증 없이 저장
             user.setProfileUrl(profileUrl); // SSRF 취약점: 내부 URL 접근 가능
             return userRepository.save(user);
         }
         return null;
     }
 
-    // MD5 해싱 함수 (비밀번호 해싱에 사용함)
+    // MD5 해싱 함수 (비밀번호 해싱에 사용)
     private String hashMD5(String input) {
         try {
             MessageDigest md = MessageDigest.getInstance("MD5");
             md.update(input.getBytes());
             byte[] digest = md.digest();
-
-            // byte 배열을 16진수 문자열로 변환
             StringBuilder hexString = new StringBuilder();
             for (byte b : digest) {
                 String hex = Integer.toHexString(0xff & b);
-                if (hex.length() == 1) {
-                    hexString.append('0');
-                }
+                if (hex.length() == 1) hexString.append('0');
                 hexString.append(hex);
             }
             return hexString.toString();
