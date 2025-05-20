@@ -110,13 +110,8 @@ public class UserController {
     @PostMapping("/profile/calculate-age")
     @ResponseBody
     public Map<String, Object> calculateAge(@RequestParam String birthYear) {
-        Map<String, Object> response = new HashMap<>();
-
         // 취약점: 사용자 입력을 검증 없이 계산식에 사용함
-        int age = userService.calculateAge(birthYear);
-
-        response.put("age", age);
-        return response;
+        return userService.calculateAge(birthYear);
     }
 
     // SSRF 취약점: 프로필 이미지 URL 설정

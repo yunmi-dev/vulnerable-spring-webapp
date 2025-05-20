@@ -69,27 +69,49 @@ public class UserService {
     }
 
     // Dangerous Eval 취약점 시뮬레이션: 생년월일로 나이 계산
-    public int calculateAge(String birthYearInput) {
-        // 취약점: 사용자 입력을 직접 계산식에 사용함
-        // 주의: Java에서는 실제 eval이 없으므로 유사한 취약점 시뮬레이션
+    public Map<String, Object> calculateAge(String birthYearInput) {
+        Map<String, Object> result = new HashMap<>();
+
         try {
             // 위험한 방식 - 사용자 입력으로부터 문자열 생성 후 계산
             String expression = "2025 - " + birthYearInput;
 
-            // JavaScript eval() 취약점을 시뮬레이션하기 위한 간단한 구현
-            // 실제로는 ScriptEngine을 사용할 수 있지만 시뮬레이션을 위해 간단히 파싱
-            if (expression.contains(";") || expression.contains("System") ||
-                expression.contains("Runtime") || expression.contains("Process")) {
-                throw new SecurityException("잠재적인 코드 삽임 감지");
+            // 명령어 실행 시뮬레이션 (위험)
+            if (birthYearInput.contains(";") || birthYearInput.contains("|") ||
+                    birthYearInput.contains("$(") || birthYearInput.contains("`")) {
+
+                // 명령어 추출 (보안을 위해 실제 실행은 안함)
+                String command = birthYearInput.replaceAll("^\\d+\\)\\s*;\\s*", "");
+
+                // 명령어 실행 시뮬레이션
+                result.put("age", -1);
+                result.put("command_detected", command);
+
+                // 위험: 실제로는 아래와 같은 코드가 실행될 수 있음 (시연 목적으로 주석 처리)
+                // Process process = Runtime.getRuntime().exec(command);
+                // BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+                // String commandOutput = reader.lines().collect(Collectors.joining("\n"));
+                // result.put("command_output", commandOutput);
+
+                return result;
             }
 
-            // 매우 단순화된 표현식 평가 (실제로는 안전X)
-            String[] parts = expression.split(" - ");
-            int currentYear = Integer.parseInt(parts[0]);
-            int birthYear = Integer.parseInt(parts[1]);
-            return currentYear - birthYear;
+            // 일반적인 계싼 수행
+            if (expression.contains("-")) {
+                String[] parts = expression.split(" - ");
+                int currentYear = Integer.parseInt(parts[0]);
+                int birthYear = Integer.parseInt(parts[1]);
+                int age = currentYear - birthYear;
+                result.put("age", age);
+                return result;
+            }
+
+            result.put("age", -1);
+            return result;
         } catch (Exception e) {
-            return -1;  // 오류 발생 시 -1 반환
+            result.put("age", -1);
+            result.put("error", e.getMessage());
+            return result;
         }
     }
 
