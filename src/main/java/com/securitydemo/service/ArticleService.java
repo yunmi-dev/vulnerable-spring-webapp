@@ -30,7 +30,15 @@ public class ArticleService {
 
     // 게시글 저장/수정
     public Article save(Article article) {
-        return articleRepository.save(article);
+        try {
+            System.out.println("Saving article - Title: " + article.getTitle());
+            System.out.println("Content: " + article.getContent().substring(0, Math.min(article.getContent().length(), 50)) + "...");
+            return articleRepository.save(article);
+        } catch (Exception e) {
+            System.out.println("Error saving article: " + e.getMessage());
+            e.printStackTrace();
+            return null;
+        }
     }
 
     // 게시글 삭제

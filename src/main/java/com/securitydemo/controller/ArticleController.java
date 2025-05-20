@@ -75,18 +75,38 @@ public class ArticleController {
                              @RequestParam String title,
                              @RequestParam String content,
                              Model model) {
-        // 사용자 인증 확인
-        User currentUser = getCurrentUser(request);
+        try {
+            // 사용자 인증 확인
+            User currentUser = getCurrentUser(request);
 
-        if (currentUser == null) {
-            model.addAttribute("error", "로그인이 필요합니다.");
-            return "redirect:/login";
+            if (currentUser == null) {
+                model.addAttribute("error", "로그인이 필요합니다.");
+                return "redirect:/login";
+            }
+
+            System.out.println("Creating new post - Title: " + title);
+            System.out.println("User: " + currentUser.getUsername() + ", ID: " + currentUser.getId());
+
+            // 취약점: 사용자 입력 HTML을 검증 없이 저장 (XSS 가능)
+            Article article = new Article();
+            article.setUserId(currentUser.getId());
+            article.setTitle(title);
+            article.setContent(content);
+
+            Article savedArticle = articleService.save(article);
+
+            if (savedArticle != null) {
+                return "redirect:/posts/" + savedArticle.getId();
+            } else {
+                model.addAttribute("error", "게시글 저장 중 오류가 발생했습니다.");
+                return "new_post";
+            }
+        } catch (Exception e) {
+            System.out.println("Error creating post: " + e.getMessage());
+            e.printStackTrace();
+            model.addAttribute("error", "게시글 작성 중 오류 발생: " + e.getMessage());
+            return "new_post";
         }
-
-        // 취약점: 사용자 입력 HTML을 검증 없이 저장 (XSS 가능)
-        Article article = articleService.create(currentUser.getId(), title, content);
-
-        return "redirect:/posts/" + article.getId();
     }
 
     // 게시글 수정 페이지 (Broken Access Control 취약점)
