@@ -11,6 +11,7 @@ import org.springframework.stereotype.Repository;
 import java.sql.PreparedStatement;
 import java.sql.Statement;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @Repository
@@ -74,15 +75,18 @@ public class UserRepository {
                 ps.setString(6, user.getProfileUrl());
                 return ps;
             }, keyHolder);
-            user.setId(keyHolder.getKey().intValue());
-            return user;
+
+            Map<String, Object> keys = keyHolder.getKeys();
+            if (keys != null && keys.containsKey("ID")) {
+                user.setId(((Number) keys.get("ID")).intValue());
+            }
         } else {
             jdbcTemplate.update(
                     "UPDATE users SET username = ?, password = ?, email = ?, is_admin = ?, birth_year = ?, profile_url = ? WHERE id = ?",
                     user.getUsername(), user.getPassword(), user.getEmail(), user.isAdmin(), user.getBirthYear(), user.getProfileUrl(), user.getId()
             );
-            return user;
         }
+        return user;
     }
 
     public boolean delete(Integer id) {
